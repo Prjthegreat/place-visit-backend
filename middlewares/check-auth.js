@@ -11,6 +11,7 @@ module.exports=(req,res,next)=>{
         throw new Error('Authantication falied');
     }
       const decodedToken=jwt.verify(token,config.secret)
+      req.userdata={email:decodedToken.email,userid:decodedToken.userid}
       next();
    }catch(err) {
      const error= new HttpError('Could not Authanticate',401);

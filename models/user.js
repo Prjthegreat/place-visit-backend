@@ -15,7 +15,8 @@ const userSchema= new schema({
         type:String,
         unique:true
     },
-    posts:[{ type:mongoose.Types.ObjectId,ref:'Post' }]
+    posts:[{ type:mongoose.Types.ObjectId,ref:'Post' }],
+    savedposts:[{ type:mongoose.Types.ObjectId,ref:'Post' }]
 })
 
 userSchema.pre('save',async function(next){

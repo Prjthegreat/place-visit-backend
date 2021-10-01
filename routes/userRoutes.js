@@ -12,6 +12,7 @@ router.post('/signup',[
     body('email').isEmail(),
     body('password').isLength({min:5})
 ],signup)
+
 router.get("/auth/confirm/:confirmationCode",verifyUser)
 
 module.exports=router

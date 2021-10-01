@@ -4,8 +4,10 @@ const HttpError=require('../error/http-error')
 const config=require('../config/config')
 const {sendConfirmationEmail}=require('../config/nodemailer.config')
 const User=require('../models/user')
+const FB=require('fb')
 const { hash,compare }=require('bcryptjs')
 const jwt=require('jsonwebtoken')
+const { v4: uuidv4 } = require('uuid')
 
 const getAllUsers=async(req,res,next)=>{
   let users
@@ -64,13 +66,13 @@ const login=async(req,res,next)=>{
   }
   let token
   try{
-    token=jwt.sign({email},config.secret,{expiresIn:'2h'})
+    token=jwt.sign({email,userid:reqUser.id},config.secret,{expiresIn:'2h'})
   }catch(err){
     const error= new HttpError('Something went wrong, try again',500)
     return next(error)
   }
   
- res.status(201).json({token,_id:reqUser._id,name:reqUser.name})
+ res.status(201).json({token})
 }
 
 const signup=async(req,res,next)=>{
@@ -88,13 +90,15 @@ const signup=async(req,res,next)=>{
       return next(error)
     }
 
-    let token=jwt.sign({email},config.secret,{expiresIn:'2h'})
+  
     const newUser= new User({
         name,
         email,
         password,
-        confirmationCode:token,
+        confirmationCode:uuidv4(),
     })
+   
+    //let token=jwt.sign({ userid:newUser.id,email},config.secret,{expiresIn:'2h'})
 
     try{
       await newUser.save((err)=>{
@@ -114,7 +118,7 @@ const signup=async(req,res,next)=>{
        return;
     }
 
-    res.status(201).json({token,user:newUser})
+    res.status(201).json({message:"An email has been sent to you on this email. Kindly verify your account."})
 }
 
 const verifyUser=(req,res,next)=>{
@@ -137,6 +141,8 @@ const verifyUser=(req,res,next)=>{
         .catch((e) => console.log("error", e));
         res.json({message:'Confirmation successfull'})
 }
+
+
 
 exports.getAllUsers=getAllUsers
 exports.getUserByUserid=getUserByUserid

@@ -2,24 +2,28 @@ const express=require('express')
 const router=express.Router()
 const {check,body}=require('express-validator')
 const {
-  createPostByUserid,
+  createMyPost,
   getAllPosts,
   getAllPostPagination,
-  getPostsByUserid,
+  getMyUserPosts,
   updatePostByPostid,
-  deletePostByPostid
+  deletePostByPostid,
+  savethispost,
+  getMySavedPosts
 }=require('../controllers/postcontrollers')
 const authMiddleware=require('../middlewares/check-auth')
 
 router.get('/getallposts',getAllPosts)
 router.get('/getsomeposts',getAllPostPagination)
-router.get('/user/:uid',authMiddleware,getPostsByUserid)
-router.post('/createpost/:uid',[
+router.get('/mypost',authMiddleware,getMyUserPosts)
+router.get('/savepost/:pid',authMiddleware,savethispost)
+router.get('/getsavedposts',authMiddleware,getMySavedPosts)
+router.post('/createpost',[
   body('placename').not().isEmpty(),
   body('description').isLength({min:5}),
   body('location').not().isEmpty(),
   body('images').isArray({min:1})
-],authMiddleware,createPostByUserid)
+],authMiddleware,createMyPost)
 router.patch('/updatepost/:pid',[
   body('description').not().isLength({min:5}),
   body('location').not().isEmpty(),

@@ -8,7 +8,8 @@ const postSchema=new schema({
     creator:{type:mongoose.Types.ObjectId,ref:'User'},
     images:[ { secure_url:String,public_id:String } ],
     likes:[{type:mongoose.Types.ObjectId,ref:'User'}],
-    comments:[{ body:String, type:mongoose.Types.ObjectId,ref:'User'}]
+    comments:[{ body:String, type:mongoose.Types.ObjectId,ref:'User'}],
+    savedby:[{type:mongoose.Types.ObjectId,ref:'User'}]
 })
 
 const Post=mongoose.model('Post',postSchema)

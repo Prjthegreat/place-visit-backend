@@ -6,6 +6,7 @@ const {cloudinary}=require('../Cloudinaryconfig/Cloudinary')
 const config=require('../config/config')
 const HttpError=require('../error/http-error')
 const { hash,compare }=require('bcryptjs')
+const { validationResult } = require('express-validator');
 
 const jwt=require('jsonwebtoken')
 
@@ -29,13 +30,14 @@ const getAllPostPagination=async(req,res,next)=>{
     try{
         posts= await Post.find({}).skip(pno*total_posts_at_time).limit(total_posts_at_time)
     }catch(err){
-
+        const error= new HttpError('something went wrong unable to fetch post',500)
+        return next(error)    
     }
     res.status(201).json({posts})
 }
 
-const getPostsByUserid=async(req,res,next)=>{
-    const {uid}=req.params
+const getMyUserPosts=async(req,res,next)=>{
+    const uid=req.userdata.userid
     let userposts
     try{
         userposts= await Post.find({creator:uid})
@@ -47,10 +49,17 @@ const getPostsByUserid=async(req,res,next)=>{
     res.status(201).json({posts:userposts})
 }
 
-const createPostByUserid=async(req,res,next)=>{
-    const {uid}=req.params
+const createMyPost=async(req,res,next)=>{
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return next(
+        new HttpError('Invalid inputs passed, please check your data.', 422)
+      );
+    }
+
+    const uid=req.userdata.userid
     const {placename,description,location,images}=req.body
-    let token=req.headers.authorization.split(' ')[1]
+    //let token=req.headers.authorization.split(' ')[1]
     let public_url_images=[]
     try{
         //await cloudinary.uploader.upload(image,{upload_preset:'Contest-image'})
@@ -77,7 +86,7 @@ const createPostByUserid=async(req,res,next)=>{
         return next(error) 
     }
 
-    const decodedToken=jwt.verify(token,config.secret)
+    //const decodedToken=jwt.verify(token,config.secret)
     const newPost= new Post({
         placename,
         description,
@@ -190,7 +199,7 @@ const deletePostByPostid=async(req,res,next)=>{
      //first find the post by id
      let reqPost
      try{
-         reqPost= await Post.findById(pid).populate('creator')
+         reqPost= await Post.findById(pid).populate('creator').populate('savedby')
      }catch(err){
          const error= new HttpError('Something went wrong, while fetching this post',500)
          return next(error) 
@@ -238,12 +247,16 @@ const deletePostByPostid=async(req,res,next)=>{
         const error= new HttpError('Something went wrong, while removing images from cloudinary',500)
         return next(error)   
      }
-
+      
      try{
       const sess= await mongoose.startSession()
          sess.startTransaction()
          await reqPost.remove({session:sess})
          reqPost.creator.posts.pull(reqPost)
+         await reqPost.savedby.forEach(user=>{
+             user.savedposts.pull(reqPost)
+             user.save({session:sess})
+         })
          await reqPost.creator.save({session:sess})
          await sess.commitTransaction()
 
@@ -258,10 +271,79 @@ const deletePostByPostid=async(req,res,next)=>{
      res.json({message:'Post deleted successfully'})
 }
 
+const savethispost=async(req,res,next)=>{
+   const uid=req.userdata.userid
+   const {pid}=req.params
+   //first lets fetch this user...
+   let reqUser
+   try{
+    reqUser= await User.findById(uid)
+   }catch(err){
+    const error = new HttpError(
+        'Something went wrong, while fetching user details',
+        500
+      )
+      return next(error)
+   } 
 
-exports.createPostByUserid=createPostByUserid
-exports.getPostsByUserid=getPostsByUserid
+   //lets fetch this post...
+   let reqPost
+   try{
+    reqPost= await Post.findById(pid)
+   }catch(err){
+    const error = new HttpError(
+        'Something went wrong, while fetching post',
+        500
+      )
+      return next(error)
+   }
+
+   if(!reqPost){
+    const error = new HttpError(
+        'Bad Request',
+        400
+      )
+      return next(error)
+   }
+
+   try{
+      reqUser.savedposts.push(reqPost)
+      reqPost.savedby.push(reqUser)
+      reqUser.save()
+      reqPost.save()
+   }catch(err){
+    const error = new HttpError(
+        'Something went wrong, while saving this post',
+        500
+      )
+      return next(error)
+   }
+
+   res.json({message:'Post saved successfully'})
+
+}
+
+const getMySavedPosts=async(req,res,next)=>{
+    const uid=req.userdata.userid
+
+    //first lets fetch this user...
+    try{
+      reqUser= await User.findById(uid).populate('savedposts')
+    }catch(err){
+        const error = new HttpError(
+            'Something went wrong, while fetching saved posts',
+            500
+          )
+          return next(error)
+    }
+    res.json({posts:reqUser.savedposts})
+}
+
+exports.createMyPost=createMyPost
+exports.getMyUserPosts=getMyUserPosts
 exports.getAllPosts=getAllPosts
 exports.getAllPostPagination=getAllPostPagination
 exports.updatePostByPostid=updatePostByPostid
 exports.deletePostByPostid=deletePostByPostid
+exports.savethispost=savethispost
+exports.getMySavedPosts=getMySavedPosts
