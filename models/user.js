@@ -16,7 +16,9 @@ const userSchema= new schema({
         unique:true
     },
     posts:[{ type:mongoose.Types.ObjectId,ref:'Post' }],
-    savedposts:[{ type:mongoose.Types.ObjectId,ref:'Post' }]
+    savedposts:[{ type:mongoose.Types.ObjectId,ref:'Post' }],
+    followers:[{type:mongoose.Types.ObjectId,ref:'User'}],
+    following:[{type:mongoose.Types.ObjectId,ref:'User'}],
 })
 
 userSchema.pre('save',async function(next){

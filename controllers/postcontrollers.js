@@ -14,7 +14,7 @@ const jwt=require('jsonwebtoken')
 const getAllPosts=async(req,res,next)=>{
     let posts
     try{
-        posts= await Post.find({}) 
+        posts= await Post.find({}).populate('creator','name') 
     }catch(err){
         const error= new HttpError('something went wrong unable to fetch post',500)
         return next(error) 
@@ -28,7 +28,7 @@ const getAllPostPagination=async(req,res,next)=>{
     const total_posts_at_time=3
     let posts
     try{
-        posts= await Post.find({}).skip(pno*total_posts_at_time).limit(total_posts_at_time)
+        posts= await Post.find({}).skip(pno*total_posts_at_time).limit(total_posts_at_time).populate('creator','name')
     }catch(err){
         const error= new HttpError('something went wrong unable to fetch post',500)
         return next(error)    

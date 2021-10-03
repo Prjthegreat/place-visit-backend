@@ -4,11 +4,11 @@ const app=express()
 const cors=require('cors')
 const mongoose=require('mongoose')
 const bodyParser=require('body-parser')
+const userroutes=require('../routes/userRoutes')
+const postroutes=require('../routes/postRoutes')
 
-const userroutes=require('./routes/userRoutes')
-const postroutes=require('./routes/postRoutes')
 
-const url=`mongodb+srv://prajwal:p4prajwal@cluster0.wdaug.mongodb.net/placevisit?retryWrites=true&w=majority`
+const url=`mongodb+srv://${process.env.DATA_BASE_ADMIN}:${process.env.DATA_BASE_PASSWORD}@cluster0.wdaug.mongodb.net/${process.env.DATA_BASE_NAME}?retryWrites=true&w=majority`
 
 app.use(cors())
 
