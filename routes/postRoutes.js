@@ -9,14 +9,16 @@ const {
   updatePostByPostid,
   deletePostByPostid,
   savethispost,
+  unsaveSavedPost,
   getMySavedPosts
 }=require('../controllers/postcontrollers')
 const authMiddleware=require('../middlewares/check-auth')
 
-router.get('/getallposts',getAllPosts)
+router.get('/getallposts',authMiddleware,getAllPosts)
 router.get('/getsomeposts',getAllPostPagination)
 router.get('/mypost',authMiddleware,getMyUserPosts)
 router.get('/savepost/:pid',authMiddleware,savethispost)
+router.get('/unsavepost/:pid',authMiddleware,unsaveSavedPost)
 router.get('/getsavedposts',authMiddleware,getMySavedPosts)
 router.post('/createpost',[
   body('placename').not().isEmpty(),

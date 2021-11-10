@@ -11,16 +11,39 @@ const { validationResult } = require('express-validator');
 const jwt=require('jsonwebtoken')
 
 
+
+
+
 const getAllPosts=async(req,res,next)=>{
+    const uid=req.userdata.userid
     let posts
     try{
-        posts= await Post.find({}).populate('creator','name') 
+        posts= await Post.find({}).populate('creator','name').populate('savedby','_id') 
     }catch(err){
         const error= new HttpError('something went wrong unable to fetch post',500)
         return next(error) 
     }
-
-    res.status(201).json({posts})
+   let modifiedposts=[]
+    posts.forEach(post=>{
+        console.log(post)
+        let temp={}
+        temp._id=post._id
+        temp.placename=post.placename
+        temp.description=post.description
+        temp.images=post.images
+        temp.location=post.location
+        temp.likes=post.likes
+        temp.comments=post.comments
+        temp.creator=post.creator
+        if(post.savedby.find(p=>p._id.toString()===uid)){
+            temp.issaved=true
+        }else{
+            temp.issaved=false
+        }
+        modifiedposts.push(temp)  
+    })
+    //console.log(modifiedposts)
+    res.status(201).json({posts:modifiedposts})
 }
 
 const getAllPostPagination=async(req,res,next)=>{
@@ -306,6 +329,14 @@ const savethispost=async(req,res,next)=>{
       return next(error)
    }
 
+   if(reqUser.savedposts.find(p=>p._id.toString()===pid)){
+    const error = new HttpError(
+        'Already Post is saved...',
+        500
+      )
+      return next(error)
+   }
+
    try{
       reqUser.savedposts.push(reqPost)
       reqPost.savedby.push(reqUser)
@@ -323,6 +354,59 @@ const savethispost=async(req,res,next)=>{
 
 }
 
+const unsaveSavedPost=async(req,res,next)=>{
+    const uid=req.userdata.userid
+    const {pid}=req.params
+    let reqUser
+   try{
+    reqUser= await User.findById(uid)
+   }catch(err){
+    const error = new HttpError(
+        'Something went wrong, while fetching user details',
+        500
+      )
+      return next(error)
+   } 
+
+     //lets fetch this post...
+     let reqPost
+     try{
+      reqPost= await Post.findById(pid)
+     }catch(err){
+      const error = new HttpError(
+          'Something went wrong, while fetching post',
+          500
+        )
+        return next(error)
+     }
+  
+     if(!reqPost){
+      const error = new HttpError(
+          'Bad Request',
+          400
+        )
+        return next(error)
+     }
+
+     try{
+        const sess= await mongoose.startSession()
+        sess.startTransaction()
+        reqUser.savedposts.pull(reqPost)
+        reqPost.savedby.pull(reqUser)
+        reqUser.save()
+        reqPost.save()
+     }catch(err){
+        const error = new HttpError(
+            'Something went wrong, while saving this post',
+            500
+          )
+          return next(error)
+     }
+     res.json({message:'Post Unsaved successfully'})
+
+}
+
+
 const getMySavedPosts=async(req,res,next)=>{
     const uid=req.userdata.userid
 
@@ -336,7 +420,28 @@ const getMySavedPosts=async(req,res,next)=>{
           )
           return next(error)
     }
-    res.json({posts:reqUser.savedposts})
+   
+    let modifiedsavedposts=[]
+  
+        
+        reqUser.savedposts.forEach( post=>{
+            
+                
+               let temp={}
+               temp._id=post._id
+               temp.placename=post.placename
+               temp.description=post.description
+               temp.images=post.images
+               temp.location=post.location
+               temp.likes=post.likes
+               temp.comments=post.comments
+               temp.creator=post.populate('creator').creator
+               temp.issaved=true
+               modifiedsavedposts.push(temp)
+        })
+       
+    
+     res.status(201).json({posts:modifiedsavedposts})
 }
 
 exports.createMyPost=createMyPost
@@ -346,4 +451,5 @@ exports.getAllPostPagination=getAllPostPagination
 exports.updatePostByPostid=updatePostByPostid
 exports.deletePostByPostid=deletePostByPostid
 exports.savethispost=savethispost
+exports.unsaveSavedPost=unsaveSavedPost
 exports.getMySavedPosts=getMySavedPosts
