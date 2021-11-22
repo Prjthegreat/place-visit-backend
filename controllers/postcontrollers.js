@@ -25,13 +25,14 @@ const getAllPosts=async(req,res,next)=>{
     }
    let modifiedposts=[]
     posts.forEach(post=>{
-        console.log(post)
+       // console.log(post)
         let temp={}
         temp._id=post._id
         temp.placename=post.placename
         temp.description=post.description
         temp.images=post.images
         temp.location=post.location
+        temp.rating=post.rating
         temp.likes=post.likes
         temp.comments=post.comments
         temp.creator=post.creator
@@ -63,13 +64,27 @@ const getMyUserPosts=async(req,res,next)=>{
     const uid=req.userdata.userid
     let userposts
     try{
-        userposts= await Post.find({creator:uid})
+        userposts= await Post.find({creator:uid}).populate({ path:'creator',
+        select:'_id',select:'name'}).populate({path:'savedby',
+        select:'_id',select:'name'})
+       
     }catch(err){
         const error= new HttpError('Something went wrong while fetching user posts',500)
         return next(error)
     }
+    console.log(userposts)
+    let postsarray=[]
+    postsarray =userposts.map( post=>{
+        let obj={ post}
+        if(post.savedby.find( user=>user._id.toString()===uid )){
+            obj.issaved=true
+        }else{
+            obj.issaved=false
+        }
+        return obj
+    } )
 
-    res.status(201).json({posts:userposts})
+    res.status(201).json({posts:postsarray})
 }
 
 const createMyPost=async(req,res,next)=>{
@@ -81,7 +96,7 @@ const createMyPost=async(req,res,next)=>{
     }
 
     const uid=req.userdata.userid
-    const {placename,description,location,images}=req.body
+    const {placename,description,rating,location,images}=req.body
     //let token=req.headers.authorization.split(' ')[1]
     let public_url_images=[]
     try{
@@ -113,6 +128,7 @@ const createMyPost=async(req,res,next)=>{
     const newPost= new Post({
         placename,
         description,
+        rating,
         location,
         creator:uid,
         images:public_url_images
@@ -133,7 +149,7 @@ const createMyPost=async(req,res,next)=>{
 }
 
 const updatePostByPostid=async(req,res,next)=>{
-    const {description,location,images}=req.body
+    const {description,rating,location,images}=req.body
     const {pid}=req.params
 
     //first find the post by id
@@ -189,6 +205,7 @@ const updatePostByPostid=async(req,res,next)=>{
 
     reqPost.description=description
     reqPost.location=location
+    reqPost.rating=rating
 
     let reqPost_image_public_url=[]
 
@@ -406,13 +423,15 @@ const unsaveSavedPost=async(req,res,next)=>{
 
 }
 
+     
+
 
 const getMySavedPosts=async(req,res,next)=>{
     const uid=req.userdata.userid
 
     //first lets fetch this user...
     try{
-      reqUser= await User.findById(uid).populate('savedposts')
+      reqUser= await User.findById(uid).populate({ path:'savedposts',populate:{ path:'creator',select:'_id',select:'name' }})
     }catch(err){
         const error = new HttpError(
             'Something went wrong, while fetching saved posts',
@@ -420,28 +439,7 @@ const getMySavedPosts=async(req,res,next)=>{
           )
           return next(error)
     }
-   
-    let modifiedsavedposts=[]
-  
-        
-        reqUser.savedposts.forEach( post=>{
-            
-                
-               let temp={}
-               temp._id=post._id
-               temp.placename=post.placename
-               temp.description=post.description
-               temp.images=post.images
-               temp.location=post.location
-               temp.likes=post.likes
-               temp.comments=post.comments
-               temp.creator=post.populate('creator').creator
-               temp.issaved=true
-               modifiedsavedposts.push(temp)
-        })
-       
-    
-     res.status(201).json({posts:modifiedsavedposts})
+     res.status(201).json({posts:reqUser.savedposts})
 }
 
 exports.createMyPost=createMyPost

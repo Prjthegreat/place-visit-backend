@@ -23,11 +23,13 @@ router.get('/getsavedposts',authMiddleware,getMySavedPosts)
 router.post('/createpost',[
   body('placename').not().isEmpty(),
   body('description').isLength({min:5}),
+  body('rating').isNumeric(),
   body('location').not().isEmpty(),
   body('images').isArray({min:1})
 ],authMiddleware,createMyPost)
 router.patch('/updatepost/:pid',[
   body('description').not().isLength({min:5}),
+  body('rating').isNumeric({min:1,max:5}),
   body('location').not().isEmpty(),
   body('images').isArray({min:1}),
 ],authMiddleware,updatePostByPostid)

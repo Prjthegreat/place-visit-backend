@@ -8,6 +8,7 @@ module.exports=(req,res,next)=>{
    try{
      //console.log(req)
     const token=req.headers.authorization.split(' ')[1] //Authorization:'Bearer Token'
+    
     if(!token){
         throw new Error('Authantication falied');
     }

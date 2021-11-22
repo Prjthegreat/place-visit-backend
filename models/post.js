@@ -6,6 +6,7 @@ const postSchema=new schema({
     description:{type:String,minlength:5,required:true},
     location:{type:String,required:true},
     creator:{type:mongoose.Types.ObjectId,ref:'User'},
+    rating:{type:Number,required:true  },
     images:[ { secure_url:String,public_id:String } ],
     likes:[{type:mongoose.Types.ObjectId,ref:'User'}],
     comments:[{ body:String, type:mongoose.Types.ObjectId,ref:'User'}],

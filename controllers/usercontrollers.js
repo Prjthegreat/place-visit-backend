@@ -25,6 +25,7 @@ const getAllUsers=async(req,res,next)=>{
 
 const getUserByUserid=async(req,res,next)=>{
   const userid=req.params.uid
+  const uid=req.userdata.userid
   let reqUser
   try{
     reqUser= await User.findById(userid,'-password -status -confirmationCode')
@@ -36,8 +37,27 @@ const getUserByUserid=async(req,res,next)=>{
     return next(error)
   }
 
-  res.status(201).json({user:reqUser})
+  //now i want to check whether this user exists in my followig list or not...
+   let myUser,isfollowing=false
+  try{
+    myUser= await User.findById(uid).populate('following','_id')
+    myUser.following.forEach( user=>{
+      if(user._id.toString()===userid){
+         isfollowing=true
+      }
+    } )
+  }catch(err){
+    const error = new HttpError(
+      'Something went wrong , Try again',
+      404
+    )
+    return next(error)
+  }
+
+
+  res.status(201).json({user:reqUser,isfollowing})
 }
+
 
 const login=async(req,res,next)=>{
   const {email,password}=req.body
@@ -73,6 +93,20 @@ const login=async(req,res,next)=>{
   }
   
  res.status(201).json({token})
+}
+
+const mydetails=async(req,res,next)=>{
+  const uid=req.userdata.userid
+  let reqUser
+  try{
+    reqUser= await User.findById(uid).populate({path:'following',select:'_id',select:'name'}).populate(
+       {path:'followers',select:'_id',select:'name'})
+  }catch(err){
+    const error= new HttpError('Something went wrong, while fetching user details',500)
+    return next(error) 
+  }
+
+  return res.json({user:reqUser})
 }
 
 const signup=async(req,res,next)=>{
@@ -159,6 +193,10 @@ const getMyFollowers=async(req,res,next)=>{
 const followUserByUserid=async(req,res,next)=>{
     const {fid}=req.params
     const uid=req.userdata.userid
+    if(uid===fid){
+      const error= new HttpError('Bad Request',400)
+      return next(error)
+    }
      let reqUser
      let followUser
     try{
@@ -221,41 +259,32 @@ const getMyFollowingUserPost=async(req,res,next)=>{
     }
      console.log('verify user.........')
     
-     
+    let newuser 
     try{
-     await verifyuser.populate('posts')
+      newuser= await User.findById(fid).populate({path:'posts',populate:{ path:'creator',select:'_id',select:'name' }})
      //await verifyuser.posts.populate('creator') 
       //creator=await followinguser.posts.populate('creator')
     }catch(err){
       const error= new HttpError('something went wrong try again',500)
       return next(error) 
     }
-    //console.log(creator)
-    let finalposts=[]
-    try{
-      verifyuser.posts=await Promise.all(verifyuser.posts.map( async post=>{
-        try{
-         await post.populate('creator','name')
-         post.save()
-         verifyuser.posts.save()
-        }catch(err){
-           console.log('error')
-        }
      
-      console.log(post)
-      if(post.creator && post.creator.name){
-       const obj={post}
-       finalposts.push(obj)
+ const newposts=newuser.posts.map(  post=>{
+      let obj={post}
+      if(post.savedby.find( user=>user._id.toString()===uid )){
+        console.log('hi1')
+        obj.issaved=true
+      }else{
+        console.log('hi2')
+        obj.issaved=false
       }
-      //finalposts.save()
-     })) 
-    }catch(err){
-      const error= new HttpError('Something went wrong',500)
-      return next(error)
-    }
-    //console.log(verifyuser.posts)
+      return obj
+    } )
+
+
+    //console.log(newposts)
    
-    res.status(201).json({posts:finalposts})
+    res.status(201).json({posts:newposts})
 
 }
 
@@ -286,6 +315,7 @@ const verifyUser=(req,res,next)=>{
 exports.getAllUsers=getAllUsers
 exports.getUserByUserid=getUserByUserid
 exports.login=login
+exports.mydetails=mydetails
 exports.signup=signup
 exports.getMyFollowingUsers=getMyFollowingUsers
 exports.getMyFollowers=getMyFollowers

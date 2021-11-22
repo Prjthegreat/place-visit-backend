@@ -12,7 +12,9 @@ const url=`mongodb+srv://${process.env.DATA_BASE_ADMIN}:${process.env.DATA_BASE_
 
 app.use(cors())
 
-app.use(bodyParser.json())
+//app.use(bodyParser.json())
+app.use(express.json({limit: '50mb'}));
+app.use(express.urlencoded({limit: '50mb'}));
 app.get('/',async(req,res,next)=>{
 
     res.send('Welcome to express app')
